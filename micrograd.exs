@@ -9,14 +9,17 @@ defmodule Value do
     %Value{data: a.data * b.data, prev: [a, b], op: :mul}
   end
 
+  def pow(a, b) do
+    %Value{data: :math.pow(a.data, b.data), prev: [a, b], op: :pow}
+  end
+
   def backward(%Value{prev: [a, b], op: :add} = val) do
-    # TODO: add current grad instead of replace
     a =
-      %{a | grad: 1.0 * val.grad}
+      %{a | grad: a.grad + val.grad}
       |> backward
 
     b =
-      %{b | grad: 1.0 * val.grad}
+      %{b | grad: b.grad + val.grad}
       |> backward
 
     %{val | prev: [a, b]}
@@ -24,14 +27,19 @@ defmodule Value do
 
   def backward(%Value{prev: [a, b], op: :mul} = val) do
     a =
-      %{a | grad: b.data * val.grad}
+      %{a | grad: a.grad + b.data * val.grad}
       |> backward
 
     b =
-      %{b | grad: a.data * val.grad}
+      %{b | grad: b.grad + a.data * val.grad}
       |> backward
 
     %{val | prev: [a, b]}
+  end
+
+  def backward(%Value{prev: [a, b], op: :pow} = val) do
+    %{a | grad: a.grad + b.data * :math.pow(a.data, b.data - 1) * val.grad}
+    |> backward
   end
 
   def backward(val) do
@@ -61,6 +69,9 @@ defmodule Test do
     e = %{Value.mul(a, b) | label: "e"}
     d = %{Value.add(e, c) | label: "d"}
     f = %Value{data: -2.0, label: "f"}
+    g = %Value{data: 3.0, label: "g"}
+
+    IO.inspect(Value.pow(a, g))
     %{Value.mul(f, d) | label: "L"}
   end
 
